@@ -1,11 +1,21 @@
-FROM ubuntu:14.04.2
+FROM python:3.5-slim
 
-MAINTAINER support@shiyanlou.com
+RUN groupadd user && useradd --create-home --home-dir /home/user -g user user
+WORKDIR /home/user
 
-RUN useradd -m trylab
+RUN pip install redis
 
-USER trylab
+ENV CELERY_VERSION 4.0.2
 
-WORKDIR /home/trylab
+RUN pip install celery=="$CELERY_VERSION"
 
-CMD echo "shiyanlou trylab." | wc -
+RUN { \
+	echo 'import os'; \
+	echo "BROKER_URL = os.environ.get('CELERY_BROKER_URL', 'amqp://')"; \
+} > celeryconfig.py
+
+# --link some-rabbit:rabbit "just works"
+ENV CELERY_BROKER_URL amqp://guest@rabbit
+
+USER user
+CMD ["celery", "worker"]
